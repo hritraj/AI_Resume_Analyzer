@@ -123,19 +123,19 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gray-50 py-10">
+    <main className="min-h-screen bg-gray-50 pt-24 pb-10">
       <div className="max-w-5xl mx-auto px-4">
         {/* Welcome & Profile Summary */}
-        <section className="mb-8 flex flex-col md:flex-row items-center justify-between bg-white p-6 rounded-lg shadow">
+        <section className="mb-8 flex flex-col md:flex-row items-center justify-between bg-white p-8 rounded-lg shadow-lg">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {username}!</h1>
-            <p className="text-gray-600">Here's your personalized resume dashboard.</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-3">Welcome, {username}!</h1>
+            <p className="text-gray-600 text-lg">Here's your personalized resume dashboard.</p>
           </div>
           <div className="flex items-center gap-4 mt-4 md:mt-0">
-            <div className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-semibold">
+            <div className="bg-blue-100 text-blue-700 px-6 py-3 rounded-lg font-semibold shadow-sm">
               ATS Score: <span className="font-bold">85%</span>
             </div>
-            <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg font-semibold">
+            <div className="bg-green-100 text-green-700 px-6 py-3 rounded-lg font-semibold shadow-sm">
               Resumes: <span className="font-bold">3</span>
             </div>
           </div>
