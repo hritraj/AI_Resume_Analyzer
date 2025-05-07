@@ -172,5 +172,86 @@ export async function checkResumeExists(userId: number, fileName: string) {
   }
 }
 
+// Helper function to get user's resumes
+export async function getUserResumes(userId: number) {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(
+      `SELECT r.*, 
+        (SELECT match_percentage FROM analysis_history WHERE resume_id = r.resume_id ORDER BY analysis_date DESC LIMIT 1) as latest_match_percentage
+       FROM resumes r 
+       WHERE r.user_id = ? 
+       ORDER BY r.upload_date DESC`,
+      [userId]
+    );
+    return rows;
+  } finally {
+    connection.release();
+  }
+}
+
+// Helper function to get resume history
+export async function getResumeHistory(resumeId: number) {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(
+      `SELECT ah.*, r.file_name 
+       FROM analysis_history ah
+       JOIN resumes r ON ah.resume_id = r.resume_id
+       WHERE ah.resume_id = ?
+       ORDER BY ah.analysis_date DESC`,
+      [resumeId]
+    );
+    return rows;
+  } finally {
+    connection.release();
+  }
+}
+
+// Helper function to delete a resume and its related data
+export async function deleteResume(resumeId: number) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Delete related records first
+    await connection.execute('DELETE FROM personal_information WHERE resume_id = ?', [resumeId]);
+    await connection.execute('DELETE FROM professional_summary WHERE resume_id = ?', [resumeId]);
+    await connection.execute('DELETE FROM education WHERE resume_id = ?', [resumeId]);
+    
+    // Delete projects and their bullets
+    const [projects] = await connection.execute('SELECT project_id FROM projects WHERE resume_id = ?', [resumeId]);
+    for (const project of projects as any[]) {
+      await connection.execute('DELETE FROM project_bullets WHERE project_id = ?', [project.project_id]);
+    }
+    await connection.execute('DELETE FROM projects WHERE resume_id = ?', [resumeId]);
+    
+    // Delete experience and their bullets
+    const [experiences] = await connection.execute('SELECT experience_id FROM experience WHERE resume_id = ?', [resumeId]);
+    for (const exp of experiences as any[]) {
+      await connection.execute('DELETE FROM experience_bullets WHERE experience_id = ?', [exp.experience_id]);
+    }
+    await connection.execute('DELETE FROM experience WHERE resume_id = ?', [resumeId]);
+    
+    // Delete other related data
+    await connection.execute('DELETE FROM technical_skills WHERE resume_id = ?', [resumeId]);
+    await connection.execute('DELETE FROM coursework WHERE resume_id = ?', [resumeId]);
+    await connection.execute('DELETE FROM certifications WHERE resume_id = ?', [resumeId]);
+    await connection.execute('DELETE FROM job_skills WHERE resume_id = ?', [resumeId]);
+    await connection.execute('DELETE FROM analysis_history WHERE resume_id = ?', [resumeId]);
+    
+    // Finally delete the resume
+    await connection.execute('DELETE FROM resumes WHERE resume_id = ?', [resumeId]);
+    
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 // Export pool for server-side use only
 export default pool; 

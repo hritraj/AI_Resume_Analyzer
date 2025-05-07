@@ -2,12 +2,32 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+interface Resume {
+  resume_id: number;
+  file_name: string;
+  upload_date: string;
+  ats_score: number;
+  latest_match_percentage: number;
+}
+
+interface AnalysisHistory {
+  analysis_id: number;
+  resume_id: number;
+  file_name: string;
+  analysis_date: string;
+  job_description: string;
+  match_percentage: number;
+}
+
 export default function Dashboard() {
   const [username, setUsername] = useState("User");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState("");
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null);
+  const [resumeHistory, setResumeHistory] = useState<AnalysisHistory[]>([]);
 
   const handleAnalyze = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -123,9 +143,63 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch user's resumes
+  const fetchResumes = async () => {
+    try {
+      const userId = 1; // TODO: Get actual user ID from session
+      const res = await fetch(`/api/resumes?userId=${userId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setResumes(data.resumes);
+      }
+    } catch (error) {
+      console.error('Error fetching resumes:', error);
+    }
+  };
+
+  // Fetch resume history
+  const fetchResumeHistory = async (resumeId: number) => {
+    try {
+      const res = await fetch(`/api/resumeHistory?resumeId=${resumeId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setResumeHistory(data.history);
+      }
+    } catch (error) {
+      console.error('Error fetching resume history:', error);
+    }
+  };
+
+  // Delete resume
+  const handleDeleteResume = async (resumeId: number) => {
+    if (!confirm('Are you sure you want to delete this resume?')) return;
+    
+    try {
+      const res = await fetch(`/api/resumes?resumeId=${resumeId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await fetchResumes();
+        if (selectedResumeId === resumeId) {
+          setSelectedResumeId(null);
+          setResumeHistory([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting resume:', error);
+    }
+  };
+
+  // View resume history
+  const handleViewHistory = async (resumeId: number) => {
+    setSelectedResumeId(resumeId);
+    await fetchResumeHistory(resumeId);
+  };
+
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) setUsername(storedUsername);
+    fetchResumes();
   }, []);
 
   return (
@@ -421,66 +495,79 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-gray-900">Your Resumes</h2>
           </div>
           <ul className="divide-y divide-gray-200">
-            <li className="py-4 flex items-center justify-between">
-              <span className="text-gray-800 font-medium">resume_june2024.pdf</span>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-sm font-semibold">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 0A9 9 0 11 3 12a9 9 0 0118 0z" /></svg>
-                  View
-                </button>
-                <button className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-sm font-semibold">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  Delete
-                </button>
-              </div>
-            </li>
-            <li className="py-4 flex items-center justify-between">
-              <span className="text-gray-800 font-medium">resume_may2024.pdf</span>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-sm font-semibold">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 0A9 9 0 11 3 12a9 9 0 0118 0z" /></svg>
-                  View
-                </button>
-                <button className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-sm font-semibold">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  Delete
-                </button>
-              </div>
-            </li>
+            {resumes.map((resume) => (
+              <li key={resume.resume_id} className="py-4 flex items-center justify-between">
+                <span className="text-gray-800 font-medium">{resume.file_name}</span>
+                <div className="flex gap-2">
+                  <button 
+                    className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-sm font-semibold"
+                    onClick={() => handleViewHistory(resume.resume_id)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 0A9 9 0 11 3 12a9 9 0 0118 0z" />
+                    </svg>
+                    View History
+                  </button>
+                  <button 
+                    className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-sm font-semibold"
+                    onClick={() => handleDeleteResume(resume.resume_id)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
         </section>
 
         {/* Resume History & Progress */}
         <section className="mb-8 bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Resume History</h2>
-          <table className="w-full text-left border-separate border-spacing-y-4">
-            <thead>
-              <tr>
-                <th className="py-2 px-4">File Name</th>
-                <th className="py-2 px-4">Analyzed On</th>
-                <th className="py-2 px-4">ATS Score</th>
-                <th className="py-2 px-4">Report</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="bg-gray-50 rounded-lg">
-                <td className="py-3 px-4 font-medium text-gray-800">resume_june2024.pdf</td>
-                <td className="py-3 px-4 text-gray-700">2024-06-01</td>
-                <td className="py-3 px-4 text-blue-700 font-semibold">85%</td>
-                <td className="py-3 px-4">
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm font-semibold">Analysis Report</button>
-                </td>
-              </tr>
-              <tr className="bg-gray-50 rounded-lg">
-                <td className="py-3 px-4 font-medium text-gray-800">resume_may2024.pdf</td>
-                <td className="py-3 px-4 text-gray-700">2024-05-10</td>
-                <td className="py-3 px-4 text-blue-700 font-semibold">80%</td>
-                <td className="py-3 px-4">
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm font-semibold">Analysis Report</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {selectedResumeId ? (
+            <table className="w-full text-left border-separate border-spacing-y-4">
+              <thead>
+                <tr>
+                  <th className="py-2 px-4">Date</th>
+                  <th className="py-2 px-4">Job Description</th>
+                  <th className="py-2 px-4">Match Score</th>
+                  <th className="py-2 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumeHistory.map((history) => (
+                  <tr key={history.analysis_id} className="bg-gray-50 rounded-lg">
+                    <td className="py-3 px-4 text-gray-700">
+                      {new Date(history.analysis_date).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 px-4 text-gray-700">
+                      <div className="max-w-md truncate">{history.job_description}</div>
+                    </td>
+                    <td className="py-3 px-4 text-blue-700 font-semibold">
+                      {history.match_percentage}%
+                    </td>
+                    <td className="py-3 px-4">
+                      <button 
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm font-semibold"
+                        onClick={() => {
+                          setJobDescription(history.job_description);
+                          // TODO: Load the resume file and trigger analysis
+                        }}
+                      >
+                        Reanalyze
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-gray-600 text-center py-4">
+              Select a resume to view its analysis history
+            </p>
+          )}
         </section>
 
         {/* Settings & Account */}
