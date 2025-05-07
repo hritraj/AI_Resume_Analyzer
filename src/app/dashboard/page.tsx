@@ -102,9 +102,15 @@ export default function Dashboard() {
           throw new Error('Failed to store analysis');
         }
 
+        const storeData = await storeRes.json();
         setAnalysisResult(analysisResult);
         setLoading(false);
-        alert('Resume analyzed and stored successfully!');
+        
+        if (storeData.isDuplicate) {
+          alert('This resume has been analyzed before. Showing analysis results without storing duplicate data.');
+        } else {
+          alert('Resume analyzed and stored successfully!');
+        }
       } catch (err) {
         console.error('Analysis error:', err);
         setLoading(false);

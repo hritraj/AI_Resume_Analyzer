@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { storeResumeAnalysis } from '@/lib/db';
+import { storeResumeAnalysis, checkResumeExists } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -12,11 +12,27 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if resume already exists
+    const existingResumeId = await checkResumeExists(userId, fileName);
+    
+    if (existingResumeId) {
+      // If resume exists, just return the existing ID and analysis result
+      return NextResponse.json({ 
+        success: true, 
+        resumeId: existingResumeId,
+        isDuplicate: true,
+        analysisResult 
+      });
+    }
+
+    // If resume doesn't exist, store it
     const resumeId = await storeResumeAnalysis(userId, fileName, analysisResult);
     
     return NextResponse.json({ 
       success: true, 
-      resumeId 
+      resumeId,
+      isDuplicate: false,
+      analysisResult 
     });
   } catch (error) {
     console.error('Error storing analysis:', error);

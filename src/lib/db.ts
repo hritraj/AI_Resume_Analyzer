@@ -158,5 +158,19 @@ export async function storeResumeAnalysis(userId: number, fileName: string, anal
   }
 }
 
+// Helper function to check if resume exists
+export async function checkResumeExists(userId: number, fileName: string) {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(
+      'SELECT resume_id FROM resumes WHERE user_id = ? AND file_name = ?',
+      [userId, fileName]
+    );
+    return (rows as any[]).length > 0 ? (rows as any[])[0].resume_id : null;
+  } finally {
+    connection.release();
+  }
+}
+
 // Export pool for server-side use only
 export default pool; 
